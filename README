@@ -1,0 +1,11 @@
+This repository contains various scripts that I had to develop
+at some point for various usages.
+
+arpwatch-irc-email.pl
+=====================
+
+This script is doing a gateway between an arpwatch mailbox under the mbox
+format and an irc channel. The idea was to be warned whenever a station's
+MAC address on a LAN is changing, so that people can spot the culprit
+quite quickly.
+
