@@ -9,3 +9,9 @@ format and an irc channel. The idea was to be warned whenever a station's
 MAC address on a LAN is changing, so that people can spot the culprit
 quite quickly.
 
+gen-pull.pl
+===========
+
+This script automates the creation, email address collection while sending
+pull request for Linux' arm-soc maintainers. Supports sending the final email
+if told so, but does not do it by default for safety.
