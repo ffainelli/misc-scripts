@@ -159,7 +159,7 @@ sub format_patch($$$$) {
 
 	open(my $fh, '>', "$branch.patch") or die("Unable to open $branch.patch for write\n");
 
-	print $fh "Subject: [GIT PULL $branch_num/".scalar(@branches)." Broadcom $branch changes for $version\n";
+	print $fh "Subject: [GIT PULL $branch_num/".scalar(@branches)."] Broadcom $branch changes for $version\n";
 
 	# Append the authors we found in the log
 	foreach my $author (@authors) {
