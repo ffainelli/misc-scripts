@@ -11,6 +11,7 @@ my $Sendemail = 0;
 # Global variables
 my @branches = (
 	"soc",
+	"soc-arm64",
 	"devicetree",
 	"devicetree-arm64",
 	"maintainers",
