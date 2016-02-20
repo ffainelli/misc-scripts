@@ -15,7 +15,9 @@ my @branches = (
 	"devicetree",
 	"devicetree-arm64",
 	"maintainers",
+	"maintainers-arm64",
 	"defconfig",
+	"defconfig-arm64",
 );
 my $branch_suffix = "next";
 
