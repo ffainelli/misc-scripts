@@ -176,6 +176,8 @@ sub format_patch($$$$) {
 		print $fh "CC: $cc\n";
 	};
 
+	print $fh "\n";
+
 	# TODO, if running with patches appended (-p), we could do a first run
 	# which also asks scripts/get_maintainer.pl to tell us who to CC
 	($err, $ret) = run("$GIT request-pull $tag $linux_repo{url} arm-soc/for-$version/$branch");
