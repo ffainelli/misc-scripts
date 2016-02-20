@@ -160,8 +160,9 @@ sub format_patch($$$$) {
 	my @authors = get_authors($tag, "$branch/$suffix");
 	my @cclist = @{$cclists{"base"}};
 	my $output = "";
+	my $filename = "$branch_num-$branch.patch";
 
-	open(my $fh, '>', "$branch.patch") or die("Unable to open $branch.patch for write\n");
+	open(my $fh, '>', $filename) or die("Unable to open $filename for write\n");
 
 	print $fh "Subject: [GIT PULL $branch_num/".scalar(@branches)."] Broadcom $branch changes for $version\n";
 
@@ -182,9 +183,10 @@ sub format_patch($$$$) {
 	close($fh);
 };
 
-sub send_email($) {
-	my $branch = shift;
-	my ($err, $ret) = run("$GIT send-email --to ".$cclists{armsoc}. " --confirm=never $branch.patch");
+sub send_email($$) {
+	my ($branch, $branch_num) = @_;
+	my $filename = "$branch_num-$branch.patch";
+	my ($err, $ret) = run("$GIT send-email --to ".$cclists{armsoc}. " --confirm=never $filename");
 };
 
 sub do_one_branch($$) {
@@ -198,13 +200,12 @@ sub do_one_branch($$) {
 
 	format_patch($branch, $suffix, $version, $tag);
 
-	$branch_num += 1;
-
 	if ($Sendemail) {
-		send_email($branch);
+		send_email($branch, $branch_num);
 	} else {
 		print " [+] Not sending email for $branch\n" if $Verbose;
 	}
+	$branch_num += 1;
 
 	print "[x] Processed $branch\n" if $Verbose;
 };
