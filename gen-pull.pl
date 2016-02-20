@@ -80,6 +80,8 @@ sub get_linux_version($) {
 	my $tag = shift;
 	my ($major, $minor);
 
+	return if !defined($tag) or $tag eq "";
+
 	if ($tag =~ /^v([0-9]).([0-9])(.*)$/) {
 		$major = $1;
 		$minor = $2;
