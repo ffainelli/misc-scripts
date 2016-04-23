@@ -18,7 +18,9 @@ my @branches = (
 	"maintainers-arm64",
 	"defconfig",
 	"defconfig-arm64",
+	"drivers",
 );
+my @gen_branches;
 my $branch_suffix = "next";
 
 my %linux_repo = (
@@ -136,7 +138,8 @@ sub get_num_branches($$) {
 
 	if (!defined($tag)) {
 		print "[-] Branch $branch has no changes\n" if $Verbose;
-		pop @branches, $branch;
+	} else {
+		push @gen_branches, $branch;
 	}
 };
 
@@ -164,7 +167,7 @@ sub format_patch($$$$) {
 
 	open(my $fh, '>', $filename) or die("Unable to open $filename for write\n");
 
-	print $fh "Subject: [GIT PULL $branch_num/".scalar(@branches)."] Broadcom $branch changes for $version\n";
+	print $fh "Subject: [GIT PULL $branch_num/".scalar(@gen_branches)."] Broadcom $branch changes for $version\n";
 
 	# Append the authors we found in the log
 	foreach my $author (@authors) {
@@ -214,6 +217,7 @@ sub do_one_branch($$) {
 
 sub main() {
 	my ($err, $ret) = run("$GIT cat-file -e $linux_repo{base}");
+	my $branch;
 	if ($err) {
 	        print " [X] Cannot find a Linux git repo in '".getcwd()."'\n";
 	        exit(1);
@@ -222,12 +226,12 @@ sub main() {
 	# Get the number of branches with changes, some might just be empty
 	# Modifies @branches if found empty branches (baseline == branch
 	# commit)
-	foreach my $branch (@branches) {
+	foreach $branch (@branches) {
 		get_num_branches("$branch", "$branch_suffix");
 	}
 
 	# Now do the actual work of generating the pull request message
-	foreach my $branch (@branches) {
+	foreach $branch (@gen_branches) {
 		do_one_branch("$branch", "$branch_suffix");
 	}
 };
