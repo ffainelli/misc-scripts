@@ -7,6 +7,8 @@ use Getopt::Long;
 my $GIT = "git";
 my $Verbose = 1;
 my $Sendemail = 0;
+my $Start = "";
+my $End = "";
 
 # Global variables
 my @branches = (
@@ -62,12 +64,24 @@ sub run($)
 	return ($err, $ret);
 }
 
-sub find_baseline_tag($) {
-	my $branch = shift;
+sub find_baseline_tag($$) {
+	my ($branch, $branch_suffix) = @_;
 	my ($err, $commit, $branch_desc, $tag);
+	my $head = $linux_repo{head};
+	my $end = $branch . "/" . $branch_suffix;
 
-	($err, $branch_desc) = run("$GIT describe $branch");
-	($err, $commit) = run("$GIT merge-base $linux_repo{head} $branch");
+	# Check that the branch exists
+	($err, $branch_desc) = run("$GIT rev-parse --verify $end");
+	if ($err ne 0) {
+		print "No such branch $end\n";
+		return;
+	}
+
+	($err, $branch_desc) = run("$GIT describe $end");
+	if ($Start ne "") {
+		$head = $Start . "/" . $branch;
+	}
+	($err, $commit) = run("$GIT merge-base $head $end");
 	return if ($commit eq "");
 	($err, $tag) = run("$GIT describe --tags $commit");
 
@@ -81,19 +95,22 @@ sub find_baseline_tag($) {
 sub get_linux_version($) {
 	my $tag = shift;
 	my ($major, $minor);
+	my $base_tag;
 
 	return if !defined($tag) or $tag eq "";
 
 	if ($tag =~ /^v([0-9]).([0-9])(.*)$/) {
 		$major = $1;
 		$minor = $2;
+		# Just assume minor + 1 for now, Linus might change his mind one day
+		# though
+		$minor += 1;
+	} elsif ($tag =~ /^arm-soc\/for-([0-9]).([0-9])(.*)$/) {
+		$major = $1;
+		$minor = $2;
 	} else {
-		die ("Unrecognized tag format\n");
+		return undef;
 	}
-
-	# Just assume minor + 1 for now, Linus might change his mind one day
-	# though
-	$minor += 1;
 
 	print " [+] Determined version $major.$minor based on $tag\n" if $Verbose;
 
@@ -134,7 +151,7 @@ sub get_authors($$) {
 sub get_num_branches($$) {
 	my ($branch, $suffix) = @_;
 	my ($err, $ret);
-	my $tag = find_baseline_tag("$branch/$suffix");
+	my $tag = find_baseline_tag($branch, $suffix);
 
 	if (!defined($tag)) {
 		print "[-] Branch $branch has no changes\n" if $Verbose;
@@ -149,12 +166,16 @@ sub usage() {
 	print "Usage ".$ARGV[0]. "\n" .
 		"--verbose:     enable verbose mode (default: yes)\n" .
 		"--send-email:  send emails while processing (default: no)\n" .
+		"--start:	start point to give to \"git request-pull\" (default: autodetect)\n" .
+		"--end:		end point to give to \"git request-pull\" (default: autodetect)\n" .
 		"--help:        this help\n";
 	exit(0);
 };
 
 GetOptions("verbose" => \$Verbose,
 	   "send-email" => \$Sendemail,
+	   "start=s" => \$Start,
+	   "end=s" => \$End,
 	   "help" => \&usage);
 
 sub format_patch($$$$) {
@@ -164,6 +185,7 @@ sub format_patch($$$$) {
 	my @cclist = @{$cclists{"base"}};
 	my $output = "";
 	my $filename = "$branch_num-$branch.patch";
+	my $end = "arm-soc/for-$version/$branch";
 
 	open(my $fh, '>', $filename) or die("Unable to open $filename for write\n");
 
@@ -181,9 +203,17 @@ sub format_patch($$$$) {
 
 	print $fh "\n";
 
+	if ($tag =~ /^arm-soc\/for-([0-9]).([0-9])(.*)$/) {
+		if ($version eq "$1.$2") {
+			$end .= "-part2";
+		}
+	}
+
+	print "Running pull from $tag to $end\n";
+
 	# TODO, if running with patches appended (-p), we could do a first run
 	# which also asks scripts/get_maintainer.pl to tell us who to CC
-	($err, $ret) = run("$GIT request-pull $tag $linux_repo{url} arm-soc/for-$version/$branch");
+	($err, $ret) = run("$GIT request-pull $tag $linux_repo{url} $end");
 	print $fh $ret;
 	close($fh);
 };
@@ -196,7 +226,7 @@ sub send_email($$) {
 
 sub do_one_branch($$) {
 	my ($branch, $suffix) = @_;
-	my $tag = find_baseline_tag("$branch/$suffix");
+	my $tag = find_baseline_tag($branch, $suffix);
 
 	my $version = get_linux_version($tag);
 	die ("unable to get Linux version for $branch") if !defined($version);
