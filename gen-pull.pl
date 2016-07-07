@@ -22,6 +22,8 @@ my @branches = (
 );
 my @gen_branches;
 my $branch_suffix = "next";
+my $armsoc_tag_pattern = '^arm-soc\/for-([0-9]).([0-9])(.*)$';
+my $linus_tag_pattern = '^v([0-9]).([0-9])(.*)$';
 
 my %linux_repo = (
 	"url"	=> "http://github.com/Broadcom/stblinux.git",
@@ -62,38 +64,66 @@ sub run($)
 	return ($err, $ret);
 }
 
-sub find_baseline_tag($) {
-	my $branch = shift;
-	my ($err, $commit, $branch_desc, $tag);
+sub find_baseline_tag($$) {
+	my ($branch, $branch_suffix) = @_;
+	my ($err, $commit, $branch_desc, $tag, $end_tag, $commits);
+	my $head = $linux_repo{head};
+	my $branch_name = $branch . "/" . $branch_suffix;
 
-	($err, $branch_desc) = run("$GIT describe $branch");
-	($err, $commit) = run("$GIT merge-base $linux_repo{head} $branch");
+	# Check that the branch exists
+	($err, $branch_desc) = run("$GIT rev-parse --verify --quiet $branch_name");
+	if ($err ne 0) {
+		print "[!] No such branch $branch_name, create?\n";
+		return;
+	}
+
+	($err, $branch_desc) = run("$GIT describe --tags --exact-match $branch_name");
+	($err, $commit) = run("$GIT merge-base $head $branch_name");
 	return if ($commit eq "");
-	($err, $tag) = run("$GIT describe --tags $commit");
+	($err, $tag) = run("$GIT describe --tags --exact-match $commit");
+	return if ($err ne 0);
+
+	($err, $commits) = run("$GIT log --format=%H $commit~1..$branch_name~1");
+	return if ($err ne 0);
+
+	# Walk the list of commits from newest to oldest, and match our own
+	# tags created with $tag_pattern
+	foreach $commit (split "\n", $commits) {
+		($err, $tag) = run("$GIT describe --tags --exact-match $commit");
+		next if ($err ne 0);
+
+		last if ($tag =~ /$armsoc_tag_pattern/);
+		last if ($tag =~ /$linus_tag_pattern/);
+	}
+
+	return if ($err ne 0);
 
 	if ($branch_desc eq $tag) {
 		return;
 	}
 
-	return $tag;
+	return ($tag, $branch_desc);
 };
 
 sub get_linux_version($) {
 	my $tag = shift;
 	my ($major, $minor);
+	my $base_tag;
 
 	return if !defined($tag) or $tag eq "";
 
-	if ($tag =~ /^v([0-9]).([0-9])(.*)$/) {
+	if ($tag =~ /$linus_tag_pattern/) {
+		$major = $1;
+		$minor = $2;
+		# Just assume minor + 1 for now, Linus might change his mind one day
+		# though
+		$minor += 1;
+	} elsif ($tag =~ /$armsoc_tag_pattern/) {
 		$major = $1;
 		$minor = $2;
 	} else {
-		die ("Unrecognized tag format\n");
+		return undef;
 	}
-
-	# Just assume minor + 1 for now, Linus might change his mind one day
-	# though
-	$minor += 1;
 
 	print " [+] Determined version $major.$minor based on $tag\n" if $Verbose;
 
@@ -134,7 +164,7 @@ sub get_authors($$) {
 sub get_num_branches($$) {
 	my ($branch, $suffix) = @_;
 	my ($err, $ret);
-	my $tag = find_baseline_tag("$branch/$suffix");
+	my $tag = find_baseline_tag($branch, $suffix);
 
 	if (!defined($tag)) {
 		print "[-] Branch $branch has no changes\n" if $Verbose;
@@ -157,10 +187,10 @@ GetOptions("verbose" => \$Verbose,
 	   "send-email" => \$Sendemail,
 	   "help" => \&usage);
 
-sub format_patch($$$$) {
-	my ($branch, $suffix, $version, $tag) = @_;
+sub format_patch($$$$$) {
+	my ($branch, $suffix, $version, $start_tag, $end_tag) = @_;
 	my ($err, $ret);
-	my @authors = get_authors($tag, "$branch/$suffix");
+	my @authors = get_authors($start_tag, "$branch/$suffix");
 	my @cclist = @{$cclists{"base"}};
 	my $output = "";
 	my $filename = "$branch_num-$branch.patch";
@@ -183,7 +213,7 @@ sub format_patch($$$$) {
 
 	# TODO, if running with patches appended (-p), we could do a first run
 	# which also asks scripts/get_maintainer.pl to tell us who to CC
-	($err, $ret) = run("$GIT request-pull $tag $linux_repo{url} arm-soc/for-$version/$branch");
+	($err, $ret) = run("$GIT request-pull $start_tag $linux_repo{url} $end_tag");
 	print $fh $ret;
 	close($fh);
 };
@@ -196,14 +226,14 @@ sub send_email($$) {
 
 sub do_one_branch($$) {
 	my ($branch, $suffix) = @_;
-	my $tag = find_baseline_tag("$branch/$suffix");
+	my ($start_tag, $end_tag) = find_baseline_tag($branch, $suffix);
 
-	my $version = get_linux_version($tag);
+	my $version = get_linux_version($start_tag);
 	die ("unable to get Linux version for $branch") if !defined($version);
 
-	print " [+] Branch $branch is based on $tag, submitting for $version\n" if $Verbose;
+	print " [+] Branch $branch is based on $start_tag, submitting for $version\n" if $Verbose;
 
-	format_patch($branch, $suffix, $version, $tag);
+	format_patch($branch, $suffix, $version, $start_tag, $end_tag);
 
 	if ($Sendemail) {
 		send_email($branch, $branch_num);
