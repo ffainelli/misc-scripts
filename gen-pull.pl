@@ -5,6 +5,8 @@ use POSIX;
 use Getopt::Long;
 
 my $GIT = "git";
+my $Fetch = 0;
+my $Push = 0;
 my $Verbose = 1;
 my $Sendemail = 0;
 
@@ -177,13 +179,17 @@ my $branch_num = 1;
 
 sub usage() {
 	print "Usage ".$ARGV[0]. "\n" .
+		"--fetch:	fetch branches from repo (default: no)\n" .
+		"--push:	push branches to repo (default: no)\n" .
 		"--verbose:     enable verbose mode (default: yes)\n" .
 		"--send-email:  send emails while processing (default: no)\n" .
 		"--help:        this help\n";
 	exit(0);
 };
 
-GetOptions("verbose" => \$Verbose,
+GetOptions("fetch" => \$Fetch,
+	   "push" => \$Push,
+	   "verbose" => \$Verbose,
 	   "send-email" => \$Sendemail,
 	   "help" => \&usage);
 
@@ -245,6 +251,18 @@ sub do_one_branch($$) {
 	print "[x] Processed $branch\n" if $Verbose;
 };
 
+sub update($) {
+	my $cmd = shift;
+	my ($err, $ret);
+	foreach my $branch (@branches) {
+		my $branch_name = "$branch/$branch_suffix";
+		print " [+] Update branch $branch_name\n" if $Verbose;
+		($err, $ret) = run("$GIT fetch broadcom-github +$branch_name:$branch_name");
+	}
+
+	exit($err);
+};
+
 sub main() {
 	my ($err, $ret) = run("$GIT cat-file -e $linux_repo{base}");
 	my $branch;
@@ -266,4 +284,10 @@ sub main() {
 	}
 };
 
-main();
+if ($Fetch eq 1) {
+	update("fetch");
+} elsif ($Push eq 1) {
+	update("push");
+} else {
+	main();
+}
