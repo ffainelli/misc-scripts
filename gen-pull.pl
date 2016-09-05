@@ -227,6 +227,8 @@ sub format_patch($$$$$) {
 	# TODO, if running with patches appended (-p), we could do a first run
 	# which also asks scripts/get_maintainer.pl to tell us who to CC
 	($err, $ret) = run("$GIT request-pull $start_tag $linux_repo{url} $end_tag");
+	die ("Unable to run pull request\n") if $err ne 0;
+
 	print $fh $ret;
 	close($fh);
 };
