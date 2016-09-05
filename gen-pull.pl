@@ -193,13 +193,20 @@ GetOptions("fetch" => \$Fetch,
 	   "send-email" => \$Sendemail,
 	   "help" => \&usage);
 
+sub get_patch_filename($$)
+{
+	my ($branch_num, $branch) = @_;
+
+	return sprintf("%02x-%s.patch", $branch_num, $branch);
+}
+
 sub format_patch($$$$$) {
 	my ($branch, $suffix, $version, $start_tag, $end_tag) = @_;
 	my ($err, $ret);
 	my @authors = get_authors($start_tag, "$branch/$suffix");
 	my @cclist = @{$cclists{"base"}};
 	my $output = "";
-	my $filename = "$branch_num-$branch.patch";
+	my $filename = get_patch_filename($branch_num, $branch);
 
 	open(my $fh, '>', $filename) or die("Unable to open $filename for write\n");
 
@@ -226,7 +233,7 @@ sub format_patch($$$$$) {
 
 sub send_email($$) {
 	my ($branch, $branch_num) = @_;
-	my $filename = "$branch_num-$branch.patch";
+	my $filename = get_patch_filename($branch_num, $branch);
 	my ($err, $ret) = run("$GIT send-email --to ".$cclists{armsoc}. " --confirm=never $filename");
 };
 
