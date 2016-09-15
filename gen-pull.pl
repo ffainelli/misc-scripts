@@ -9,6 +9,7 @@ my $Fetch = 0;
 my $Push = 0;
 my $Verbose = 1;
 my $Sendemail = 0;
+my $Force = 0;
 
 # Global variables
 my @branches = (
@@ -183,6 +184,7 @@ sub usage() {
 		"--push:	push branches to repo (default: no)\n" .
 		"--verbose:     enable verbose mode (default: yes)\n" .
 		"--send-email:  send emails while processing (default: no)\n" .
+		"--force:  	force actions (default: no)\n" .
 		"--help:        this help\n";
 	exit(0);
 };
@@ -191,6 +193,7 @@ GetOptions("fetch" => \$Fetch,
 	   "push" => \$Push,
 	   "verbose" => \$Verbose,
 	   "send-email" => \$Sendemail,
+	   "force" => \$Force,
 	   "help" => \&usage);
 
 sub get_patch_filename($$)
@@ -266,7 +269,10 @@ sub update($) {
 	foreach my $branch (@branches) {
 		my $branch_name = "$branch/$branch_suffix";
 		print " [+] Update branch $branch_name\n" if $Verbose;
-		($err, $ret) = run("$GIT fetch broadcom-github +$branch_name:$branch_name");
+		my $git_cmd = "$GIT $cmd broadcom-github " . ($Force eq 1 ? "+" : "") .
+			      "$branch_name:$branch_name";
+		($err, $ret) = run("$git_cmd");
+		print " [X] $branch_name: $ret\n" if ($err ne 0);
 	}
 
 	exit($err);
