@@ -15,3 +15,10 @@ gen-pull.pl
 This script automates the creation, email address collection while sending
 pull request for Linux' arm-soc maintainers. Supports sending the final email
 if told so, but does not do it by default for safety.
+
+pre-commit-email-check.sh
+=========================
+
+This script allows you to switch between corporate and private emails within the
+same git tree by defining which on is which. It assumes that your private
+remotes are going to have an URL which is private (obviously).
