@@ -25,8 +25,8 @@ my @branches = (
 );
 my @gen_branches;
 my $branch_suffix = "next";
-my $armsoc_tag_pattern = '^arm-soc\/for-([0-9]).([0-9])(.*)$';
-my $linus_tag_pattern = '^v([0-9]).([0-9])(.*)$';
+my $armsoc_tag_pattern = '^arm-soc\/for-([0-9]).([0-9]+)(.*)$';
+my $linus_tag_pattern = '^v([0-9]).([0-9]+)(.*)$';
 
 my %linux_repo = (
 	"url"	=> "http://github.com/Broadcom/stblinux.git",
