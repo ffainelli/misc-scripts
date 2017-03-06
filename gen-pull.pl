@@ -24,7 +24,10 @@ my @branches = (
 	"drivers",
 );
 my @gen_branches;
-my $branch_suffix = "next";
+my @branch_suffixes = (
+	"next",
+	"fixes",
+);
 my $armsoc_tag_pattern = '^arm-soc\/for-([0-9]).([0-9]+)(.*)$';
 my $linus_tag_pattern = '^v([0-9]).([0-9]+)(.*)$';
 
@@ -230,7 +233,11 @@ sub format_patch($$$$$) {
 	# TODO, if running with patches appended (-p), we could do a first run
 	# which also asks scripts/get_maintainer.pl to tell us who to CC
 	($err, $ret) = run("$GIT request-pull $start_tag $linux_repo{url} $end_tag");
-	die ("Unable to run pull request\n") if $err ne 0;
+	if ($err ne 0) {
+		print ("Unable to run pull request!\n");
+		close($fh);
+		unlink($filename);
+	}
 
 	print $fh $ret;
 	close($fh);
@@ -267,7 +274,7 @@ sub update($) {
 	my $cmd = shift;
 	my ($err, $ret);
 	foreach my $branch (@branches) {
-		my $branch_name = "$branch/$branch_suffix";
+		my $branch_name = "$branch/$branch_suffixes[0]";
 		print " [+] Update branch $branch_name\n" if $Verbose;
 		my $git_cmd = "$GIT $cmd broadcom-github " . ($Force eq 1 ? "+" : "") .
 			      "$branch_name:$branch_name";
@@ -280,7 +287,7 @@ sub update($) {
 
 sub main() {
 	my ($err, $ret) = run("$GIT cat-file -e $linux_repo{base}");
-	my $branch;
+	my ($branch, $branch_suffix);
 	if ($err) {
 	        print " [X] Cannot find a Linux git repo in '".getcwd()."'\n";
 	        exit(1);
@@ -290,12 +297,16 @@ sub main() {
 	# Modifies @branches if found empty branches (baseline == branch
 	# commit)
 	foreach $branch (@branches) {
-		get_num_branches("$branch", "$branch_suffix");
+		foreach $branch_suffix (@branch_suffixes) {
+			get_num_branches("$branch", "$branch_suffix");
+		}
 	}
 
 	# Now do the actual work of generating the pull request message
 	foreach $branch (@gen_branches) {
-		do_one_branch("$branch", "$branch_suffix");
+		foreach $branch_suffix (@branch_suffixes) {
+			do_one_branch("$branch", "$branch_suffix");
+		}
 	}
 };
 
