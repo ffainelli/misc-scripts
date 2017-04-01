@@ -254,22 +254,23 @@ sub send_email($$) {
 sub do_one_branch($$) {
 	my ($branch, $suffix) = @_;
 	my ($start_tag, $end_tag) = find_baseline_tag($branch, $suffix);
+	my $branch_name = "$branch/$suffix";
 
 	my $version = get_linux_version($start_tag);
-	die ("unable to get Linux version for $branch") if !defined($version);
+	die ("unable to get Linux version for $branch_name") if !defined($version);
 
-	print " [+] Branch $branch is based on $start_tag, submitting for $version\n" if $Verbose;
+	print " [+] Branch $branch_name is based on $start_tag, submitting for $version\n" if $Verbose;
 
 	format_patch($branch, $suffix, $version, $start_tag, $end_tag);
 
 	if ($Sendemail) {
 		send_email($branch, $branch_num);
 	} else {
-		print " [+] Not sending email for $branch\n" if $Verbose;
+		print " [+] Not sending email for $branch_name\n" if $Verbose;
 	}
 	$branch_num += 1;
 
-	print "[x] Processed $branch\n" if $Verbose;
+	print "[x] Processed $branch_name\n" if $Verbose;
 };
 
 sub update($) {
