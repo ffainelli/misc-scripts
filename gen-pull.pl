@@ -213,6 +213,7 @@ sub format_patch($$$$$) {
 	my @cclist = @{$cclists{"base"}};
 	my $output = "";
 	my $filename = get_patch_filename($branch_num, $branch);
+	my $cmd;
 
 	open(my $fh, '>', $filename) or die("Unable to open $filename for write\n");
 
@@ -232,15 +233,16 @@ sub format_patch($$$$$) {
 
 	# TODO, if running with patches appended (-p), we could do a first run
 	# which also asks scripts/get_maintainer.pl to tell us who to CC
-	($err, $ret) = run("$GIT request-pull $start_tag $linux_repo{url} $end_tag");
+	$cmd = "$GIT request-pull $start_tag $linux_repo{url} $end_tag";
+	($err, $ret) = run($cmd);
 	if ($err ne 0) {
-		print ("Unable to run pull request!\n");
+		print ("Unable to run pull request!: $cmd\n");
 		close($fh);
 		unlink($filename);
+	} else {
+		print $fh $ret;
+		close($fh);
 	}
-
-	print $fh $ret;
-	close($fh);
 };
 
 sub send_email($$) {
