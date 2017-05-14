@@ -213,11 +213,18 @@ sub format_patch($$$$$) {
 	my @cclist = @{$cclists{"base"}};
 	my $output = "";
 	my $filename = get_patch_filename($branch_num, $branch);
+	my $kind;
 	my $cmd;
+
+	if ($suffix eq "next") {
+		$kind = "changes";
+	} else {
+		$kind = "fixes";
+	}
 
 	open(my $fh, '>', $filename) or die("Unable to open $filename for write\n");
 
-	print $fh "Subject: [GIT PULL $branch_num/".scalar(@gen_branches)."] Broadcom $branch changes for $version\n";
+	print $fh "Subject: [GIT PULL $branch_num/".scalar(@gen_branches)."] Broadcom $branch $kind for $version\n";
 
 	# Append the authors we found in the log
 	foreach my $author (@authors) {
