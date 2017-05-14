@@ -111,8 +111,8 @@ sub find_baseline_tag($$) {
 	return ($tag, $branch_desc);
 };
 
-sub get_linux_version($) {
-	my $tag = shift;
+sub get_linux_version($$) {
+	my ($tag, $branch_suffix) = @_;
 	my ($major, $minor);
 	my $base_tag;
 
@@ -123,7 +123,7 @@ sub get_linux_version($) {
 		$minor = $2;
 		# Just assume minor + 1 for now, Linus might change his mind one day
 		# though
-		$minor += 1;
+		$minor += 1 if ($branch_suffix eq "next");
 	} elsif ($tag =~ /$armsoc_tag_pattern/) {
 		$major = $1;
 		$minor = $2;
@@ -256,7 +256,7 @@ sub do_one_branch($$) {
 	my ($start_tag, $end_tag) = find_baseline_tag($branch, $suffix);
 	my $branch_name = "$branch/$suffix";
 
-	my $version = get_linux_version($start_tag);
+	my $version = get_linux_version($start_tag, $suffix);
 	die ("unable to get Linux version for $branch_name") if !defined($version);
 
 	print " [+] Branch $branch_name is based on $start_tag, submitting for $version\n" if $Verbose;
