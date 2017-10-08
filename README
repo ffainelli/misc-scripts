@@ -22,3 +22,9 @@ pre-commit-email-check.sh
 This script allows you to switch between corporate and private emails within the
 same git tree by defining which on is which. It assumes that your private
 remotes are going to have an URL which is private (obviously).
+
+wti-nps.py
+==========
+
+This script allows you to turn on/off/boot relays and get their status on a WTI
+NPS-115 device connected via telnet.
