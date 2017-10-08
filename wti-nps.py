@@ -2,23 +2,37 @@
 
 import argparse
 import telnetlib
+import sys
 
 PROMPT = b"NPS> "
+
+def range_check_relay(relay):
+	if (int(relay) <= 0 or int(relay) > 8):
+		print("Invalid relay value range: [1..8]")
+		sys.exit(1)
 
 def send_cmd(tn, args):
 	cmd = "/"
 	if args.on:
-		cmd += "On " + args.on
+		cmd += "On "
+		relay = args.on
 	elif args.off:
-		cmd += "Off " + args.off
+		cmd += "Off "
+		relay = args.off
 	elif args.reboot:
-		cmd += "Boot " + args.reboot
-	cmd += "\r\n"
+		cmd += "Boot "
+		relay = args.reboot
+
+	range_check_relay(relay)
+
+	cmd += relay + "\r\n"
 
 	tn.write(cmd.encode())
 	resp = tn.read_until(PROMPT)
 
 def get_status(tn, relay):
+	range_check_relay(relay)
+
 	cmd = "/S\r\n"
 	tn.write(cmd.encode())
 	buf = ""
