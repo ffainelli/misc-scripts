@@ -73,6 +73,7 @@ def main():
 		get_status(tn, args.status)
 	else:
 		send_cmd(tn, args)
+	tn.close()
 
 
 if __name__ == "__main__":
