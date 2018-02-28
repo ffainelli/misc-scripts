@@ -32,7 +32,7 @@ my $armsoc_tag_pattern = '^arm-soc\/for-([0-9]).([0-9]+)(.*)$';
 my $linus_tag_pattern = '^v([0-9]).([0-9]+)(.*)$';
 
 my %linux_repo = (
-	"url"	=> "http://github.com/Broadcom/stblinux.git",
+	"url"	=> "https://github.com/Broadcom/stblinux.git",
 	"head"	=> "master",
 	"base"	=> "1da177e4c3f41524e886b7f1b8a0c1fc7321cac2",
 );
