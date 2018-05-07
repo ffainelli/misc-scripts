@@ -5,11 +5,14 @@ use POSIX;
 use Getopt::Long;
 
 my $GIT = "git";
+my $AIAIAI = "aiaiai-test-patchset";
+my $AIAIAI_OPTS = "-j 17 --bisectability --sparse --smatch --cppcheck --coccinelle --checkpatch";
 my $Fetch = 0;
 my $Push = 0;
 my $Verbose = 1;
 my $Sendemail = 0;
 my $Force = 0;
+my $Build = 0;
 
 # Global variables
 my %branches = (
@@ -45,6 +48,18 @@ my %cclists = (
 		   "khilman\@kernel.org",
 		   "bcm-kernel-feedback-list\@broadcom.com",
 	   	  ],
+);
+
+my %cross_configs = (
+	"arm" => "arm-linux-",
+	"arm64" => "aarch64-linux-",
+	"mips" => "mipsel-linux-",
+);
+
+my %build_configs = (
+	"arm" => [ "multi_v7_defconfig", "bcm2835_defconfig" ],
+	"arm64" => [ "defconfig" ],
+	"mips" => [ "bmips_stb_defconfig", "bcm63xx_defconfig" ],
 );
 
 sub run($)
@@ -208,6 +223,7 @@ sub usage() {
 		"--verbose:     enable verbose mode (default: yes)\n" .
 		"--send-email:  send emails while processing (default: no)\n" .
 		"--force:  	force actions (default: no)\n" .
+		"--build:	build branches (default: no)\n" .
 		"--help:        this help\n";
 	exit(0);
 };
@@ -217,6 +233,7 @@ GetOptions("fetch" => \$Fetch,
 	   "verbose" => \$Verbose,
 	   "send-email" => \$Sendemail,
 	   "force" => \$Force,
+	   "build" => \$Build,
 	   "help" => \&usage);
 
 sub get_patch_filename($$)
@@ -300,6 +317,53 @@ sub do_one_branch($$) {
 	print "[x] Processed $branch_name\n" if $Verbose;
 };
 
+sub build_one_branch($$) {
+	my ($branch, $suffix) = @_;
+	my ($start_tag, $start_commit, $end_tag, $branch_desc, $err, $ret);
+	my $branch_name = "$branch/$suffix";
+	my $filename = "$branch.patch";
+	my $linux_dir;
+	($err, $linux_dir) = run("$GIT rev-parse --show-toplevel");
+
+	die ("Unable to obtain top level directory!?") if ($err ne 0);
+
+	$branch_desc = branch_exists($branch_name);
+	die if !defined($branch_desc);
+
+	($start_commit, $start_tag) = find_merge_base($branch_name);
+
+	return if !defined($start_tag) or !defined($start_commit);
+
+	print "[X] Branch is based on $start_tag\n";
+
+	($err, $ret) = run("$GIT format-patch $start_tag..$branch_name --stdout > $filename");
+	if ($err ne 0) {
+		print ("Unable to run format-patch!\n");
+		unlink($filename);
+		exit($err);
+	}
+
+	my $aiaiai_targets = "";
+	foreach my $arch (@{$branches{"$branch"}}) {
+		foreach my $defconfig (@{$build_configs{"$arch"}}) {
+			my $cross = $cross_configs{$arch};
+			$aiaiai_targets .= "$defconfig,$arch,$cross ";
+		}
+	}
+
+
+	my $cmd = "$AIAIAI $AIAIAI_OPTS $linux_dir $aiaiai_targets < $filename";
+	print  "[X] Building with $cmd\n";
+	($err, $ret) = run($cmd);
+	if ($err ne 0) {
+		print ("Build failure:\n");
+		print $ret;
+		exit($err);
+	}
+
+	unlink($filename);
+}
+
 sub update($) {
 	my $cmd = shift;
 	my ($err, $ret);
@@ -335,7 +399,11 @@ sub main() {
 	# Now do the actual work of generating the pull request message
 	foreach $branch (@gen_branches) {
 		foreach $branch_suffix (@branch_suffixes) {
-			do_one_branch("$branch", "$branch_suffix");
+			if ($Build eq 1) {
+				build_one_branch("$branch", "$branch_suffix");
+			} else {
+				do_one_branch("$branch", "$branch_suffix");
+			}
 		}
 	}
 };
