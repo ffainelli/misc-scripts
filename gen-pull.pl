@@ -12,16 +12,16 @@ my $Sendemail = 0;
 my $Force = 0;
 
 # Global variables
-my @branches = (
-	"soc",
-	"soc-arm64",
-	"devicetree",
-	"devicetree-arm64",
-	"maintainers",
-	"maintainers-arm64",
-	"defconfig",
-	"defconfig-arm64",
-	"drivers",
+my %branches = (
+	"soc" => [ "arm" ],
+	"soc-arm64" => [ "arm64" ],
+	"devicetree" => [ "arm", "arm64" ],	# Shared DTS
+	"devicetree-arm64" => [ "arm", "arm64" ], #Shared DTS
+	"maintainers" => [],
+	"maintainers-arm64" => [],
+	"defconfig" => [ "arm" ],
+	"defconfig-arm64" => [ "arm64" ],
+	"drivers" => [ "arm", "arm64", "mips" ], # Shared drivers
 );
 my @gen_branches;
 my @branch_suffixes = (
@@ -303,8 +303,8 @@ sub do_one_branch($$) {
 sub update($) {
 	my $cmd = shift;
 	my ($err, $ret);
-	foreach my $branch (@branches) {
-		my $branch_name = "$branch/$branch_suffixes[0]";
+	foreach (sort keys %branches) {
+		my $branch_name = "$_/$branch_suffixes[0]";
 		print " [+] Update branch $branch_name\n" if $Verbose;
 		my $git_cmd = "$GIT $cmd broadcom-github " . ($Force eq 1 ? "+" : "") .
 			      "$branch_name:$branch_name";
@@ -326,9 +326,9 @@ sub main() {
 	# Get the number of branches with changes, some might just be empty
 	# Modifies @branches if found empty branches (baseline == branch
 	# commit)
-	foreach $branch (@branches) {
+	foreach (sort keys %branches) {
 		foreach $branch_suffix (@branch_suffixes) {
-			get_num_branches("$branch", "$branch_suffix");
+			get_num_branches("$_", "$branch_suffix");
 		}
 	}
 
