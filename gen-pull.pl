@@ -70,11 +70,9 @@ sub run($)
 	return ($err, $ret);
 }
 
-sub find_baseline_tag($$) {
-	my ($branch, $branch_suffix) = @_;
-	my ($err, $commit, $branch_desc, $tag, $end_tag, $commits);
-	my $head = $linux_repo{head};
-	my $branch_name = $branch . "/" . $branch_suffix;
+sub branch_exists($) {
+	my $branch_name = shift;
+	my ($err, $branch_desc);
 
 	# Check that the branch exists
 	($err, $branch_desc) = run("$GIT rev-parse --verify --quiet $branch_name");
@@ -83,11 +81,33 @@ sub find_baseline_tag($$) {
 		return;
 	}
 
-	($err, $branch_desc) = run("$GIT describe --tags --exact-match $branch_name");
+	return $branch_desc;
+}
+
+sub find_merge_base($) {
+	my $branch_name = shift;
+	my $head = $linux_repo{head};
+	my ($err, $commit, $tag);
+
 	($err, $commit) = run("$GIT merge-base $head $branch_name");
 	return if ($commit eq "");
 	($err, $tag) = run("$GIT describe --tags --exact-match $commit");
 	return if ($err ne 0);
+
+	return ($commit, $tag);
+}
+
+sub find_baseline_tag($$) {
+	my ($branch, $branch_suffix) = @_;
+	my ($err, $commit, $branch_desc, $tag, $end_tag, $commits);
+	my $branch_name = $branch . "/" . $branch_suffix;
+
+	$branch_desc = branch_exists($branch_name);
+	return if !defined($branch_desc);
+
+	($err, $branch_desc) = run("$GIT describe --tags --exact-match $branch_name");
+	($commit, $tag) = find_merge_base($branch_name);
+	return if !defined($commit) or !defined($tag);
 
 	($err, $commits) = run("$GIT log --format=%H $commit~1..$branch_name~1");
 	return if ($err ne 0);
