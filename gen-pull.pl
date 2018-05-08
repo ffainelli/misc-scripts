@@ -357,9 +357,10 @@ sub build_one_branch($$) {
 	($err, $ret) = run($cmd);
 	if ($err ne 0) {
 		print ("Build failure:\n");
-		print $ret;
 		exit($err);
 	}
+	print "[X] aiaiai build results:\n";
+	print $ret;
 
 	unlink($filename);
 }
