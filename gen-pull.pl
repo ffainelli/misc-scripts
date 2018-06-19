@@ -351,6 +351,10 @@ sub build_one_branch($$) {
 		}
 	}
 
+	if ($aiaiai_targets eq "") {
+		print "[X] No build architectures for $branch";
+		exit(0);
+	}
 
 	my $cmd = "$AIAIAI $AIAIAI_OPTS $linux_dir $aiaiai_targets < $filename";
 	print  "[X] Building with $cmd\n";
