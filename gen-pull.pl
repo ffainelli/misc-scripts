@@ -356,7 +356,7 @@ sub build_one_branch($$) {
 		exit(0);
 	}
 
-	my $cmd = "$AIAIAI $AIAIAI_OPTS $linux_dir $aiaiai_targets < $filename";
+	my $cmd = "$AIAIAI $AIAIAI_OPTS -c $start_tag $linux_dir $aiaiai_targets < $filename";
 	print  "[X] Building with $cmd\n";
 	($err, $ret) = run($cmd);
 	if ($err ne 0) {
