@@ -31,7 +31,7 @@ my %branches = (
 my @gen_branches;
 my @branch_suffixes = (
 	"next",
-	"fixes",
+	#"fixes",
 );
 my $armsoc_tag_pattern = '^arm-soc\/for-([0-9]).([0-9]+)(.*)$';
 my $linus_tag_pattern = '^v([0-9]).([0-9]+)(.*)$';
@@ -43,7 +43,7 @@ my %linux_repo = (
 );
 
 my %cclists = (
-	"armsoc" => "arm\@kernel.org",
+	"soc" => "soc\@kernel.org",
 	"base" => ["linux-arm-kernel\@lists.infradead.org",
 		   "arnd\@arndb.de",
 		   "olof\@lixom.net",
@@ -294,7 +294,7 @@ sub format_patch($$$$$) {
 sub send_email($$) {
 	my ($branch, $branch_num) = @_;
 	my $filename = get_patch_filename($branch_num, $branch);
-	my ($err, $ret) = run("$GIT send-email --to ".$cclists{armsoc}. " --confirm=never $filename");
+	my ($err, $ret) = run("$GIT send-email --to ".$cclists{soc}. " --confirm=never $filename");
 };
 
 sub do_one_branch($$) {
