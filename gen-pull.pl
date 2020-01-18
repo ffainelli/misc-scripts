@@ -193,7 +193,7 @@ sub get_authors($$) {
 
 		# Now find the contributors to this commit, identified by
 		# standard Linux practices
-		if ($line =~ /(.*)(Acked|Reviewed|Reported|Signed-off|Suggested|Tested)-by:\s(.*)$/) {
+		if ($line =~ /(.*)(Acked|Reviewed|Reported|Signed-off|Suggested|Tested|Co-developed)-by:\s(.*)$/) {
 			my $person = $3;
 			push @person_list, $person;
 		}
