@@ -23,6 +23,11 @@ This script allows you to switch between corporate and private emails within the
 same git tree by defining which on is which. It assumes that your private
 remotes are going to have an URL which is private (obviously).
 
+pre-commit-checkpatch.sh
+========================
+
+Runs checkpatch on an about to be committed patch.
+
 wti-nps.py
 ==========
 
