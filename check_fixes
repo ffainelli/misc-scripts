@@ -58,6 +58,11 @@ has these problem(s):
 		fi
 		if ! git rev-parse -q --verify "$sha" >/dev/null; then
 			printf '%s%s  - %s\n' "$commit_msg" "$fixes_msg" 'Target SHA1 does not exist'
+			fixes_candidates=$(git log --grep="$(echo $subject | sed -e 's/^(\(.*\))$/\1/')" --format="%h")
+			if [ ! -z "$fixes_candidates" ]; then
+				printf '\nPossible candidate:\n\n'
+				printf '  Fixes: %s %s\n' "$fixes_candidates" "$subject"
+			fi
 			ret_code=1
 			commit_msg=''
 			continue
