@@ -9,6 +9,7 @@ split_re='^([Cc][Oo][Mm][Mm][Ii][Tt])?[[:space:]]*([[:xdigit:]]{5,})([[:space:]]
 nl=$'\n'
 tab=$'\t'
 ret_code=0
+hook_mode=0
 
 # Strip the leading and training spaces from a string
 strip_spaces()
@@ -127,7 +128,10 @@ has these problem(s):
 			msg="${msg:+${msg}${nl}}  - Subject does not match target commit subject${nl}    Just use${nl}${tab}git log -1 --format='Fixes: %h (\"%s\")'"
 			ret_code=1
 		fi
-		lsha=$(cd "$GIT_DIR" && git rev-parse -q --verify "$sha")
+		if [ "$hook_mode" -eq 0 ]; then
+			cd "$GIT_DIR"
+		fi
+		lsha=$(git rev-parse -q --verify "$sha")
 		if [ -z "$lsha" ]; then
 			count=$(git rev-list --count "$sha".."$c")
 			if [ "$count" -eq 0 ]; then
@@ -146,6 +150,9 @@ has these problem(s):
 if [ "$#" -eq 2 -a -e "$1" -a "$2" = "-g" ]; then
 	# We expect to be given the commit message as argument while running in commit-msg hook
 	fixes_lines=$(cat $1 | grep -i '^[[:space:]]*Fixes:')
+	hook_mode=1
+
+	[ -z "$fixes_lines" ] && exit $ret_code
 
 	process_one_commit "$fixes_lines"
 else
