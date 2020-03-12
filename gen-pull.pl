@@ -219,13 +219,13 @@ sub get_num_branches($$) {
 my $branch_num = 1;
 
 sub usage() {
-	print "Usage ".$ARGV[0]. "\n" .
-		"--fetch:	fetch branches from repo (default: no)\n" .
-		"--push:	push branches to repo (default: no)\n" .
+	print "Usage ".$0. " [options]\n" .
+		"--fetch:       fetch branches from repo (default: no)\n" .
+		"--push:        push branches to repo (default: no)\n" .
 		"--verbose:     enable verbose mode (default: yes)\n" .
 		"--send-email:  send emails while processing (default: no)\n" .
-		"--force:  	force actions (default: no)\n" .
-		"--build:	build branches (default: no)\n" .
+		"--force:       force actions (default: no)\n" .
+		"--build:       build branches (default: no)\n" .
 		"--help:        this help\n";
 	exit(0);
 };
