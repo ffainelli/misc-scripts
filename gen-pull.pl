@@ -15,6 +15,7 @@ my $Verbose = 1;
 my $Sendemail = 0;
 my $Force = 0;
 my $Build = 0;
+my $Branch_suffix = "next";
 
 # Global variables
 my %branches = (
@@ -29,10 +30,6 @@ my %branches = (
 	"drivers" => [ "arm", "arm64", "mips" ], # Shared drivers
 );
 my @gen_branches;
-my @branch_suffixes = (
-	"next",
-	#"fixes",
-);
 my $armsoc_tag_pattern = '^arm-soc\/for-([0-9]).([0-9]+)(.*)$';
 my $linus_tag_pattern = '^v([0-9]).([0-9]+)(.*)$';
 
@@ -236,6 +233,7 @@ GetOptions("fetch" => \$Fetch,
 	   "send-email" => \$Sendemail,
 	   "force" => \$Force,
 	   "build" => \$Build,
+	   "branch=s" => \$Branch_suffix,
 	   "help" => \&usage);
 
 sub get_patch_filename($$)
@@ -375,7 +373,7 @@ sub update($) {
 	my $cmd = shift;
 	my ($err, $ret);
 	foreach (sort keys %branches) {
-		my $branch_name = "$_/$branch_suffixes[0]";
+		my $branch_name = "$_/$Branch_suffix";
 		print " [+] Update branch $branch_name\n" if $Verbose;
 		my $git_cmd = "$GIT $cmd broadcom-github " . ($Force eq 1 ? "+" : "") .
 			      "$branch_name:$branch_name";
@@ -388,7 +386,7 @@ sub update($) {
 
 sub main() {
 	my ($err, $ret) = run("$GIT cat-file -e $linux_repo{base}");
-	my ($branch, $branch_suffix);
+	my ($branch);
 	if ($err) {
 	        print " [X] Cannot find a Linux git repo in '".getcwd()."'\n";
 	        exit(1);
@@ -398,19 +396,15 @@ sub main() {
 	# Modifies @branches if found empty branches (baseline == branch
 	# commit)
 	foreach (sort keys %branches) {
-		foreach $branch_suffix (@branch_suffixes) {
-			get_num_branches("$_", "$branch_suffix");
-		}
+		get_num_branches("$_", "$Branch_suffix");
 	}
 
 	# Now do the actual work of generating the pull request message
 	foreach $branch (@gen_branches) {
-		foreach $branch_suffix (@branch_suffixes) {
-			if ($Build eq 1) {
-				build_one_branch("$branch", "$branch_suffix");
-			} else {
-				do_one_branch("$branch", "$branch_suffix");
-			}
+		if ($Build eq 1) {
+			build_one_branch("$branch", "$Branch_suffix");
+		} else {
+			do_one_branch("$branch", "$Branch_suffix");
 		}
 	}
 };
