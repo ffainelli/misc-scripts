@@ -361,7 +361,7 @@ sub build_one_branch($$) {
 	print  "[X] Building with $cmd\n";
 	($err, $ret) = run($cmd);
 	if ($err ne 0) {
-		print ("Build failure:\n");
+		print ("Build failure: $ret\n");
 		exit($err);
 	}
 	print "[X] aiaiai build results:\n";
