@@ -223,6 +223,7 @@ sub usage() {
 		"--send-email:  send emails while processing (default: no)\n" .
 		"--force:       force actions (default: no)\n" .
 		"--build:       build branches (default: no)\n" .
+		"--branch:	specify the branch to use (default: next)\n" .
 		"--help:        this help\n";
 	exit(0);
 };
