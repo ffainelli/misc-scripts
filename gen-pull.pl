@@ -6,7 +6,7 @@ use Getopt::Long;
 
 my $GIT = "git";
 my $AIAIAI = "aiaiai-test-patchset";
-my $AIAIAI_KTARGETS = "all dtbs dtbs_install dt_binding_check dtbs_check";
+my $AIAIAI_KTARGETS = "all dtbs dtbs_install dtbs_check";
 my $AIAIAI_KMAKE_OPTS = "INSTALL_DTBS_PATH=\"\$PWD/dtbs_install\"";
 my $AIAIAI_OPTS = "-j 17 --bisectability --sparse --smatch --cppcheck --coccinelle --checkpatch --targets \"$AIAIAI_KTARGETS\" -M \"$AIAIAI_KMAKE_OPTS\"";
 my $Fetch = 0;
