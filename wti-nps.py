@@ -62,9 +62,13 @@ def main():
     parser.add_argument("--off", help="Turn relay off")
     parser.add_argument("--reboot", help="Reboot relay")
     parser.add_argument("--status", help="Get relay status")
+    parser.add_argument("--debug", help="Enable debug")
     args = parser.parse_args()
 
     tn = telnetlib.Telnet(args.host)
+    if args.debug:
+        tn.set_debuglevel(255)
+
     if args.password:
         tn.write((args.password + "\r\n").encode())
         resp = tn.read_until(PROMPT)
