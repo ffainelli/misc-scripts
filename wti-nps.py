@@ -3,8 +3,10 @@
 import argparse
 import telnetlib
 import sys
+import re
 
-PROMPT = b"NPS> "
+PROMPT = [br'NPS> ', br'IPS> ', br'NBB> ']
+STATUS = '([0-9])([0-9a-z\s\(\)\|])+\|\s+(ON|OFF)'
 
 def range_check_relay(relay):
     if (int(relay) <= 0 or int(relay) > 8):
@@ -28,7 +30,7 @@ def send_cmd(tn, args):
     cmd += relay + "\r\n"
 
     tn.write(cmd.encode())
-    resp = tn.read_until(PROMPT)
+    resp = tn.expect(PROMPT, 10)
 
 def get_status(tn, relay):
     range_check_relay(relay)
@@ -37,20 +39,20 @@ def get_status(tn, relay):
     tn.write(cmd.encode())
     buf = ""
 
-    tn.read_until(PROMPT + cmd.encode())
     while True:
-        resp = tn.read_until(PROMPT)
-        if resp is not None:
+        resp = tn.expect(PROMPT, 10)
+        if resp[2] is not None:
             break
 
-    buf = resp.decode()
+    buf = resp[2].decode()
 
     for line in buf.splitlines():
         if line == "":
             continue
-        words = line.split()
-        if words[0] == relay:
-            print(words[4])
+
+        m = re.search(STATUS, line)
+        if m is not None and m.group(1) == relay:
+            print(m.group(3))
 
 
 def main():
@@ -71,7 +73,9 @@ def main():
 
     if args.password:
         tn.write((args.password + "\r\n").encode())
-        resp = tn.read_until(PROMPT)
+
+    """ Flush out whathever was sent until we get a prompt """
+    tn.expect(PROMPT, 10)
 
     if args.status:
         get_status(tn, args.status)
