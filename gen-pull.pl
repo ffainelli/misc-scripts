@@ -9,7 +9,7 @@ my $AIAIAI = "aiaiai-test-patchset";
 my $AIAIAI_KTARGETS = "all dtbs dtbs_install dtbs_check";
 my $AIAIAI_KMAKE_OPTS = "INSTALL_DTBS_PATH=\"\$PWD/dtbs_install\"";
 my $NUM_CPUS = do { local @ARGV='/proc/cpuinfo'; grep /^processor\s+:/, <>; };
-my $AIAIAI_OPTS = "-j $NUM_CPUS --bisectability --sparse --smatch --cppcheck --coccinelle --checkpatch --targets \"$AIAIAI_KTARGETS\" -M \"$AIAIAI_KMAKE_OPTS\"";
+my $AIAIAI_OPTS = "-j $NUM_CPUS --bisectability --sparse --smatch --cppcheck --coccinelle --checkpatch --targets \"$AIAIAI_KTARGETS\" -M \"$AIAIAI_KMAKE_OPTS\" --logdir=\"\$PWD/logs/\" -p";
 my $Fetch = 0;
 my $Push = 0;
 my $Verbose = 1;
