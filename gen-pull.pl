@@ -51,9 +51,9 @@ my %cclists = (
 );
 
 my %cross_configs = (
-	"arm" => "arm-linux-",
-	"arm64" => "aarch64-linux-",
-	"mips" => "mipsel-linux-",
+	"arm" => "arm-linux-gnueabihf-",
+	"arm64" => "aarch64-linux-gnu-",
+	"mips" => "mipsel-linux-gnu-",
 );
 
 my %build_configs = (
