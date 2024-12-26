@@ -6,35 +6,43 @@ import sys
 import re
 
 PROMPT = [br'NPS> ', br'IPS> ', br'NBB> ']
-STATUS = '([0-9])([0-9a-z\s\(\)\|])+\|\s+(ON|OFF)'
+STATUS = r'([0-9])([0-9a-z\s\(\)\|])+\|\s+(ON|OFF)'
 
 def range_check_relay(relay):
     if (int(relay) <= 0 or int(relay) > 8):
         print("Invalid relay value range: [1..8]")
         sys.exit(1)
 
-def send_cmd(tn, args):
+def __send_cmd(tn, args, relay):
     cmd = "/"
     if args.on:
-        cmd += "On "
-        relay = args.on
+        cmd += "On"
     elif args.off:
-        cmd += "Off "
-        relay = args.off
+        cmd += "Off"
     elif args.reboot:
-        cmd += "Boot "
-        relay = args.reboot
+        cmd += "Boot"
 
-    range_check_relay(relay)
-
-    cmd += relay + "\r\n"
-
+    cmd += " " + str(relay) + "\r\n"
     tn.write(cmd.encode())
     resp = tn.expect(PROMPT, 10)
 
-def get_status(tn, relay):
-    range_check_relay(relay)
+def send_cmd(tn, args):
+    relay = None
+    if args.on:
+        relay = args.on
+    elif args.off:
+        relay = args.off
+    elif args.reboot:
+        relay = args.reboot
 
+    if relay == "all":
+        for r in range(0, 8):
+            __send_cmd(tn, args, r)
+    else:
+        range_check_relay(relay)
+        __send_cmd(tn, args, relay)
+
+def __get_status(tn, relay):
     cmd = "/S\r\n"
     tn.write(cmd.encode())
     buf = ""
@@ -54,6 +62,13 @@ def get_status(tn, relay):
         if m is not None and m.group(1) == relay:
             print(m.group(3))
 
+def get_status(tn, relay):
+    if relay == "all":
+        for r in range(0, 8):
+            __get_status(tn, str(r))
+    else:
+        range_check_relay(relay)
+        __get_status(tn, relay)
 
 def main():
 
