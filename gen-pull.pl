@@ -17,6 +17,7 @@ my $Sendemail = 0;
 my $Force = 0;
 my $Build = 0;
 my $Branch_suffix = "next";
+my $Merge = 0;
 
 # Global variables
 my %branches = (
@@ -44,7 +45,6 @@ my %cclists = (
 	"soc" => "soc\@kernel.org",
 	"base" => ["linux-arm-kernel\@lists.infradead.org",
 		   "arnd\@arndb.de",
-		   "olof\@lixom.net",
 		   "khilman\@kernel.org",
 		   "bcm-kernel-feedback-list\@broadcom.com",
 	   	  ],
@@ -236,6 +236,7 @@ GetOptions("fetch" => \$Fetch,
 	   "force" => \$Force,
 	   "build" => \$Build,
 	   "branch=s" => \$Branch_suffix,
+	   "merge" => \$Merge,
 	   "help" => \&usage);
 
 sub get_patch_filename($$)
@@ -386,6 +387,18 @@ sub update($) {
 	exit($err);
 };
 
+sub merge() {
+	my ($err, $ret);
+	($err, $ret) = run("git checkout next");
+	foreach (sort keys %branches) {
+		my $branch_name = "$_/$Branch_suffix";
+		($err, $ret) = run("git merge --signoff $branch_name");
+	}
+	print "[+] Merged branches into next";
+
+	exit($err);
+}
+
 sub main() {
 	my ($err, $ret) = run("$GIT cat-file -e $linux_repo{base}");
 	my ($branch);
@@ -415,6 +428,8 @@ if ($Fetch eq 1) {
 	update("fetch");
 } elsif ($Push eq 1) {
 	update("push");
+} elsif ($Merge eq 1) {
+	merge();
 } else {
 	main();
 }
