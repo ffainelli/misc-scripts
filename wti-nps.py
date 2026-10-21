@@ -1,12 +1,22 @@
 #!/usr/bin/env python3
 
 import argparse
-import telnetlib
 import sys
 import re
 
+try:
+    from telnetlib3 import Telnet
+except ImportError:
+    sys.exit("Install Telnet support: python3 -m pip install 'telnetlib3>=4,<5'")
+
 PROMPT = [br'NPS> ', br'IPS> ', br'NBB> ']
 STATUS = r'([0-9])([0-9a-z\s\(\)\|])+\|\s+(ON|OFF)'
+
+def expect_prompt(tn):
+    index, _, response = tn.expect(PROMPT, 10)
+    if index < 0:
+        raise TimeoutError("Timed out waiting for WTI prompt")
+    return response
 
 def range_check_relay(relay):
     if (int(relay) <= 0 or int(relay) > 8):
@@ -24,7 +34,7 @@ def __send_cmd(tn, args, relay):
 
     cmd += " " + str(relay) + "\r\n"
     tn.write(cmd.encode())
-    resp = tn.expect(PROMPT, 10)
+    expect_prompt(tn)
 
 def send_cmd(tn, args):
     relay = None
@@ -36,7 +46,7 @@ def send_cmd(tn, args):
         relay = args.reboot
 
     if relay == "all":
-        for r in range(0, 8):
+        for r in range(1, 9):
             __send_cmd(tn, args, r)
     else:
         range_check_relay(relay)
@@ -45,14 +55,7 @@ def send_cmd(tn, args):
 def __get_status(tn, relay):
     cmd = "/S\r\n"
     tn.write(cmd.encode())
-    buf = ""
-
-    while True:
-        resp = tn.expect(PROMPT, 10)
-        if resp[2] is not None:
-            break
-
-    buf = resp[2].decode()
+    buf = expect_prompt(tn).decode(errors="replace")
 
     for line in buf.splitlines():
         if line == "":
@@ -61,10 +64,12 @@ def __get_status(tn, relay):
         m = re.search(STATUS, line)
         if m is not None and m.group(1) == relay:
             print(m.group(3))
+            return
+    raise ValueError("No status found for relay " + relay)
 
 def get_status(tn, relay):
     if relay == "all":
-        for r in range(0, 8):
+        for r in range(1, 9):
             __get_status(tn, str(r))
     else:
         range_check_relay(relay)
@@ -73,30 +78,31 @@ def get_status(tn, relay):
 def main():
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--host", help="WTI relay host")
+    parser.add_argument("--host", required=True, help="WTI relay host")
     parser.add_argument("--password", help="WTI relay password")
-    parser.add_argument("--on", help="Turn relay on")
-    parser.add_argument("--off", help="Turn relay off")
-    parser.add_argument("--reboot", help="Reboot relay")
-    parser.add_argument("--status", help="Get relay status")
-    parser.add_argument("--debug", help="Enable debug")
+    actions = parser.add_mutually_exclusive_group(required=True)
+    choices = [str(r) for r in range(1, 9)] + ["all"]
+    actions.add_argument("--on", choices=choices, help="Turn relay on")
+    actions.add_argument("--off", choices=choices, help="Turn relay off")
+    actions.add_argument("--reboot", choices=choices, help="Reboot relay")
+    actions.add_argument("--status", choices=choices, help="Get relay status")
+    parser.add_argument("--debug", nargs="?", const=True, help="Enable debug")
     args = parser.parse_args()
 
-    tn = telnetlib.Telnet(args.host)
-    if args.debug:
-        tn.set_debuglevel(255)
-
-    if args.password:
-        tn.write((args.password + "\r\n").encode())
-
-    """ Flush out whathever was sent until we get a prompt """
-    tn.expect(PROMPT, 10)
-
-    if args.status:
-        get_status(tn, args.status)
-    else:
-        send_cmd(tn, args)
-    tn.close()
+    try:
+        with Telnet(args.host, timeout=10) as tn:
+            if args.debug:
+                tn.set_debuglevel(255)
+            if args.password:
+                tn.write((args.password + "\r\n").encode())
+            expect_prompt(tn)
+            if args.status:
+                get_status(tn, args.status)
+            else:
+                send_cmd(tn, args)
+    except (OSError, EOFError, ValueError) as exc:
+        print("WTI command failed: " + str(exc), file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

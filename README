@@ -33,3 +33,15 @@ wti-nps.py
 
 This script allows you to turn on/off/boot relays and get their status on a WTI
 NPS-115 device connected via telnet.
+
+Install its Python dependency with:
+    python3 -m pip install -r requirements.txt
+
+Examples:
+    python3 wti-nps.py --host pdu --status all
+    python3 wti-nps.py --host pdu --off 1
+    python3 wti-nps.py --host pdu --on 1
+
+Uses telnetlib3's synchronous Telnet API, including on Python 3.13 and later.
+Commands return nonzero on connection errors or missing prompts. A returned
+prompt acknowledges the command exchange; it does not verify outlet state.
