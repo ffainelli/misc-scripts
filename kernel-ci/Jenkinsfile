@@ -1,0 +1,29 @@
+pipeline {
+    agent {
+        node {
+            label 'home-lab'
+            customWorkspace '/home/florian/dev/github/misc-scripts'
+        }
+    }
+    triggers { cron('H/10 * * * *') }
+    options {
+        disableConcurrentBuilds()
+        skipDefaultCheckout(true)
+        timestamps()
+        buildDiscarder(logRotator(numToKeepStr: '100'))
+    }
+    parameters { booleanParam(name: 'FORCE', defaultValue: false, description: 'Retry current upstream master') }
+    stages {
+        stage('Build and boot upstream master') {
+            steps {
+                sh "python3 kernel-ci/run.py --output kernel-ci-results/${env.BUILD_NUMBER} ${params.FORCE ? '--force' : ''}"
+            }
+        }
+    }
+    post {
+        always {
+            junit testResults: "kernel-ci-results/${env.BUILD_NUMBER}/junit.xml", allowEmptyResults: true
+            archiveArtifacts artifacts: "kernel-ci-results/${env.BUILD_NUMBER}/**", allowEmptyArchive: true
+        }
+    }
+}

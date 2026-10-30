@@ -1,6 +1,25 @@
 This repository contains various scripts that I had to develop
 at some point for various usages.
 
+boot_smoke.py and lab.toml.example
+=================================
+
+Power-cycle lab boards, boot Linux through a serial console server, and run
+smoke checks. Requires Python 3.11+ and requirements.txt dependencies.
+Copy lab.toml.example to lab.toml, then update the sample hostnames, addresses,
+outlets, console ports, TFTP paths, and board settings for your lab. lab.toml is
+ignored by Git. Supply login passwords through BOOTSMOKE_LOGIN_PASSWORD.
+
+Example (power-cycles the configured target):
+    python3 boot_smoke.py --config lab.toml --target qube2 --mode mips32
+
+kernel-ci/ and build-all.sh
+==========================
+
+Poll upstream Linux master, build the home lab's Buildroot profiles, and run
+boot_smoke.py on each configured target. Includes a Jenkins pipeline and JUnit
+reports. See kernel-ci/README.md for setup, coverage, and local commands.
+
 arpwatch-irc-email.pl
 =====================
 

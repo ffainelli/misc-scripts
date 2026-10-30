@@ -1,0 +1,616 @@
+# Example hardware lab configuration for boot_smoke.py (Python 3.11+).
+# Copy to lab.toml and adapt it to your wiring, firmware, and TFTP layout.
+# Run from the repository root, for example:
+#   python3 boot_smoke.py --config lab.toml --target qube2 --mode mips32
+# Each selected profile power-cycles its target. Verify outlet assignments first.
+# Hostnames and TEST-NET addresses below are placeholders; replace all of them.
+# Image paths are relative to your TFTP root. Firmware commands, load addresses,
+# console ports, network interfaces, and checks must match your board and image.
+# Install dependencies with: python3 -m pip install -r requirements.txt
+# If the target asks for a password, set BOOTSMOKE_LOGIN_PASSWORD in the runner's
+# environment. Do not store passwords in this file.
+# The WTI helper path below assumes execution from the repository root.
+# Raspberry Pi profiles also modify rpi_config on the runner host; point it at
+# the config.txt actually served by your network boot setup.
+
+[power]
+hostname = "pdu.example.com"
+off_delay_s = 2
+timeout_s = 35
+wti_script = "wti-nps.py"
+# Run the PDU helper using the same Python environment as the test runner.
+off_argv = ["{python}", "{wti_script}", "--host", "{pdu_host}", "--off", "{outlet}"]
+on_argv  = ["{python}", "{wti_script}", "--host", "{pdu_host}", "--on", "{outlet}"]
+
+[targets.qube2]
+outlet = "7"
+ping_host = "192.0.2.1" # TFTP server; verify reachability from Linux
+
+[targets.qube2.console]
+transport = "telnet"   # or "tcp" for a raw TCP serial port
+host = "console.example.com" # always-on terminal server, not DUT
+port = 2004
+write_delay_s = 0.1 # pace UART input: 100 ms between characters, no flow control
+
+[targets.qube2.boot]
+power_on_regex = 'Cobalt Microserver Diagnostics'
+firmware_prompt = '(?m)^> '
+interrupt = "\u0003" # one Ctrl-C to stop CoLo's boot menu
+interrupt_when_regex = 'boot: running boot menu'
+firmware_timeout_s = 30
+kernel_start_regex = 'Linux version\s'
+kernel_timeout_s = 120
+# ColO drops the terminal session while loading its bootloader kernel.
+reconnect_start_regex = 'Executing bootloader kernel\.\.\.'
+reconnect_end_regex = 'Decompressing[^\r\n]*done\.' # tolerate backspace spinner bytes
+reconnect_timeout_s = 30
+
+[[targets.qube2.boot.boot_steps]]
+command = "net"
+expect = '(?m)^> '
+timeout_s = 30
+
+[[targets.qube2.boot.boot_steps]]
+command = "tftp 192.0.2.1 {image}"
+expect = '(?m)^> '
+timeout_s = 120
+
+[[targets.qube2.boot.boot_steps]]
+command = 'exec "console=ttyS0,115200"'
+
+[targets.qube2.login]
+user = "root"
+# Built-in prompt patterns tolerate appended kernel messages and exclude kernel # lines.
+password_env = "BOOTSMOKE_LOGIN_PASSWORD"
+shell_timeout_s = 120
+
+[targets.qube2.profiles.mips32]
+image = "cobalt/vmlinux32"
+uname_regex = '(?m)^mips(?:el)?\s*$'
+
+[targets.qube2.profiles.mips64]
+image = "cobalt/vmlinux64"
+uname_regex = '(?m)^mips64(?:el)?\s*$'
+
+# To customize checks instead of defaults, add [[targets.qube2.checks]] entries:
+# [[targets.qube2.checks]]
+# name = "uptime"
+# command = "uptime"
+# timeout_s = 15
+# output_regex = "load average"
+#
+# Optional machine-specific expected dmesg messages to exclude from failure:
+# [targets.qube2] -> ignore_patterns = ['(?i)some harmless warning']
+
+[targets.rpi4]
+outlet = "6"
+ping_host = "192.0.2.1"
+rpi_config = "/srv/tftp/rpi-boot/upstream/config.txt"
+
+[targets.rpi4.console]
+transport = "telnet"
+host = "console.example.com"
+port = 2006
+write_delay_s = 0.05
+
+[targets.rpi4.boot]
+bootloader = "none" # direct firmware network boot; set "uboot" when installed
+kernel_start_regex = 'Linux version\s'
+kernel_timeout_s = 120
+# Used only with bootloader = "uboot". Adapt commands to the installed environment.
+firmware_prompt = '(?m)^=> '
+interrupt = "\r"
+interrupt_interval_s = 0.25
+firmware_timeout_s = 60
+
+[[targets.rpi4.boot.boot_steps]]
+command = "run bootcmd" # use U-Boot's existing bootcmd; ignored for direct boot
+
+[targets.rpi4.login]
+user = "root"
+# Use the built-in patterns for interleaved login/kernel output.
+password_env = "BOOTSMOKE_LOGIN_PASSWORD"
+shell_timeout_s = 120
+
+[targets.rpi4.profiles.arm]
+arm_64bit = 0
+uname_regex = '(?m)^armv7l\s*$'
+
+[targets.rpi4.profiles.aarch64]
+arm_64bit = 1
+uname_regex = '(?m)^aarch64\s*$'
+
+[targets.smartrg]
+outlet = "1"
+ping_host = "198.51.100.1"
+
+[targets.smartrg.console]
+transport = "telnet"
+host = "console.example.com" # confirm console endpoint
+port = "2002"
+write_delay_s = 0.05
+
+[targets.smartrg.boot]
+bootloader = "cfe"
+firmware_prompt = '(?m)(?:^|(?<=\r))CFE>[ \t]*' # confirm actual prompt
+interrupt = "\u0003"
+interrupt_when_regex = 'Loader:raw Filesys:tftp Dev:eth0 File:: Options:\(null\)'
+firmware_timeout_s = 60
+kernel_start_regex = 'Linux version\s'
+kernel_timeout_s = 120
+
+[[targets.smartrg.boot.boot_steps]]
+command = "boot -raw -tftp -addr=0x01000000 -max=0x14000000 198.51.100.1:{image}"
+
+[targets.smartrg.login]
+user = "root"
+password_env = "BOOTSMOKE_LOGIN_PASSWORD"
+shell_timeout_s = 120
+
+[targets.smartrg.profiles.arm]
+image = "zImage.bcm4708-smartrg-sr400ac"
+uname_regex = '(?m)^armv7l\s*$'
+
+# Explicit checks retain the default smoke coverage and configure DSA before ping.
+[[targets.smartrg.checks]]
+name = "uname"
+command = "uname -a"
+timeout_s = 15
+
+[[targets.smartrg.checks]]
+name = "kernel_arch"
+command = "uname -m"
+timeout_s = 15
+
+[[targets.smartrg.checks]]
+name = "cmdline"
+command = "cat /proc/cmdline"
+timeout_s = 15
+
+[[targets.smartrg.checks]]
+name = "uptime"
+command = "uptime"
+timeout_s = 15
+
+[[targets.smartrg.checks]]
+name = "memory"
+command = "free"
+timeout_s = 15
+
+[[targets.smartrg.checks]]
+name = "filesystem"
+command = "df -h"
+timeout_s = 15
+
+[[targets.smartrg.checks]]
+name = "network_setup"
+# Raise the conduit first. Detect the cabled switch port rather than assuming a jack.
+# This lab target uses a single Ethernet cable to the 198.51.100.0/24 network.
+command = "ip link set eth0 up && for p in lan1 lan2 lan3 lan4 wan; do ip link set $p up || exit 1; done; sleep 4; port=; for p in lan1 lan2 lan3 lan4 wan; do if [ \"$(cat /sys/class/net/$p/carrier)\" = 1 ]; then test -z \"$port\" || exit 1; port=$p; fi; done; test -n \"$port\" && ip addr replace 198.51.100.2/24 dev $port && ip addr show dev $port"
+timeout_s = 60
+
+[[targets.smartrg.checks]]
+name = "ping"
+command = "ping -c 3 -W 2 {ping_host}"
+timeout_s = 30
+
+[[targets.smartrg.checks]]
+name = "dmesg"
+command = "dmesg"
+timeout_s = 30
+
+[targets.mtx1]
+outlet = "3"
+ping_host = "192.0.2.1"
+
+[targets.mtx1.console]
+transport = "telnet"
+host = "console.example.com"
+port = 2001
+write_delay_s = 0.05
+
+[targets.mtx1.boot]
+bootloader = "yamon"
+firmware_prompt = '(?m)(?:^|(?<=\r))YAMON>[ \t]*'
+interrupt = "\u0003"
+interrupt_when_regex = 'Press Ctrl-C to bypass this\.'
+firmware_timeout_s = 60
+kernel_start_regex = 'Linux version\s'
+kernel_timeout_s = 120
+
+[[targets.mtx1.boot.boot_steps]]
+command = "load tftp://192.0.2.1/{image}"
+# Require YAMON's successful load summary before accepting the next prompt.
+expect = '(?m)(?:^|(?<=\r))Start\s*=\s*0x[0-9a-fA-F]+,[^\r\n]*format\s*=\s*SREC[^\r\n]*[\r\n]+YAMON>[ \t]*'
+timeout_s = 120
+
+[[targets.mtx1.boot.boot_steps]]
+command = "go . console=ttyS0,115200"
+
+[targets.mtx1.login]
+user = "root"
+password_env = "BOOTSMOKE_LOGIN_PASSWORD"
+shell_timeout_s = 120
+
+[targets.mtx1.profiles.mips32]
+image = "mtx1/vmlinux.srec"
+uname_regex = '(?m)^mips(?:el)?\s*$'
+
+# Linksys EA4500 (Kirkwood / Viper), example PDU outlet 2.
+# Its zero-second boot delay requires repeated Ctrl-C before the countdown.
+# Run: python3 boot_smoke.py --config lab.toml --target ea4500 --mode arm
+[targets.ea4500]
+outlet = "2"
+ping_host = "203.0.113.1"
+# A watchdog configuration message, not a timeout failure.
+# Keep mwl8k RF_ANTENNA diagnostics visible to the strict error scanner.
+ignore_patterns = ['orion_wdt: Initial timeout 21 sec']
+
+[targets.ea4500.console]
+transport = "telnet"
+host = "console.example.com"
+port = 2003
+write_delay_s = 0.05
+
+[targets.ea4500.boot]
+bootloader = "uboot"
+firmware_prompt = '(?m)(?:^|(?<=\r))Viper>>[ \t]*'
+interrupt = "\u0003"
+interrupt_interval_s = 0.1
+firmware_settle_s = 0.5
+firmware_timeout_s = 60
+kernel_start_regex = 'Linux version\s'
+kernel_timeout_s = 120
+# Deliberately no interrupt_when_regex: the countdown is too late.
+
+[[targets.ea4500.boot.boot_steps]]
+command = "setenv serverip 203.0.113.1"
+expect = 'Viper>> '
+
+[[targets.ea4500.boot.boot_steps]]
+command = "setenv ipaddr 203.0.113.2"
+expect = 'Viper>> '
+
+[[targets.ea4500.boot.boot_steps]]
+command = "setenv bootargs console=ttyS0,115200 rdinit=/init"
+expect = 'Viper>> '
+
+[[targets.ea4500.boot.boot_steps]]
+command = "tftpboot 0x02000000 {image}"
+expect = 'Bytes transferred = [0-9]+[\s\S]*Viper>> '
+timeout_s = 120
+
+[[targets.ea4500.boot.boot_steps]]
+command = "bootm 0x02000000"
+
+[targets.ea4500.login]
+user = "root"
+password_env = "BOOTSMOKE_LOGIN_PASSWORD"
+shell_timeout_s = 120
+
+[targets.ea4500.profiles.arm]
+image = "tftp/e4500/uImage"
+uname_regex = '(?m)^armv5tel\s*$'
+
+[[targets.ea4500.checks]]
+name = "uname"
+command = "uname -a"
+timeout_s = 30
+
+[[targets.ea4500.checks]]
+name = "device_tree"
+command = "tr -d \"\\000\" < /proc/device-tree/model"
+timeout_s = 30
+output_regex = "Linksys Viper"
+
+[[targets.ea4500.checks]]
+name = "network_tools"
+command = "ethtool --version && ip -Version && bridge -Version"
+timeout_s = 30
+
+[[targets.ea4500.checks]]
+name = "switch_driver"
+command = "ethtool -i ethernet1"
+output_regex = "driver: dsa"
+timeout_s = 30
+
+[[targets.ea4500.checks]]
+name = "ports"
+command = "ip -d link show"
+timeout_s = 30
+
+[[targets.ea4500.checks]]
+name = "switch_stats"
+command = "ethtool -S ethernet1"
+timeout_s = 30
+
+[[targets.ea4500.checks]]
+name = "storage"
+command = "cat /proc/mtd; ls /sys/bus/usb/devices"
+timeout_s = 30
+
+[[targets.ea4500.checks]]
+name = "all_dsa_ports"
+command = "for p in ethernet1 ethernet2 ethernet3 ethernet4 internet; do test -d /sys/class/net/$p || exit 1; done"
+timeout_s = 30
+
+[[targets.ea4500.checks]]
+name = "kernel_arch"
+command = "uname -m"
+timeout_s = 15
+
+[[targets.ea4500.checks]]
+name = "wireless_tools"
+command = "iw --version && hostapd -v 2>&1 | grep '^hostapd v' && wpa_supplicant -v && wpa_cli -v"
+timeout_s = 30
+
+[[targets.ea4500.checks]]
+name = "wireless_firmware"
+command = "test -s /lib/firmware/mwl8k/helper_8366.fw && test -s /lib/firmware/mwl8k/fmimage_8366.fw && test -s /lib/firmware/mwl8k/fmimage_8366_ap-3.fw && test -s /lib/firmware/regulatory.db && test -s /lib/firmware/regulatory.db.p7s"
+timeout_s = 30
+
+[[targets.ea4500.checks]]
+name = "wireless_radios"
+command = "test \"$(ls /sys/class/ieee80211 | wc -l)\" -eq 2 && for p in /sys/class/ieee80211/*; do readlink \"$p/device/driver\"; done"
+timeout_s = 30
+output_regex = "mwl8k"
+
+[[targets.ea4500.checks]]
+name = "wireless_capabilities"
+command = "iw list"
+timeout_s = 30
+
+[[targets.ea4500.checks]]
+name = "wireless_interfaces"
+command = "iw dev"
+timeout_s = 30
+
+[[targets.ea4500.checks]]
+name = "wireless_regulatory"
+command = "iw reg get"
+timeout_s = 30
+
+[[targets.ea4500.checks]]
+name = "thermal_sensor"
+command = "cat /sys/class/thermal/thermal_zone0/type && cat /sys/class/thermal/thermal_zone0/temp"
+timeout_s = 30
+output_regex = "kirkwood_thermal"
+
+[[targets.ea4500.checks]]
+name = "xor_dma"
+command = "ls /sys/class/dma && test \"$(ls -1 /sys/class/dma | wc -l)\" -eq 2"
+timeout_s = 30
+
+[[targets.ea4500.checks]]
+name = "cesa_crypto"
+command = "grep mv-cbc-aes /proc/crypto"
+timeout_s = 30
+output_regex = "mv-cbc-aes"
+
+[[targets.ea4500.checks]]
+name = "gpio_leds"
+command = "ls /sys/class/leds"
+timeout_s = 30
+output_regex = "viper:white:health"
+
+[[targets.ea4500.checks]]
+name = "platform_drivers"
+command = "for d in /sys/bus/platform/devices/*; do if test -L \"$d/driver\"; then echo \"$d\"; readlink \"$d/driver\"; fi; done"
+timeout_s = 30
+output_regex = "marvell-cesa"
+
+[[targets.ea4500.checks]]
+name = "network_setup"
+command = "ip link set eth0 up && ip link set ethernet3 up && ip addr replace 203.0.113.2/24 dev ethernet3 && sleep 4"
+timeout_s = 30
+
+[[targets.ea4500.checks]]
+name = "ping"
+command = "ping -c 3 -W 2 {ping_host}"
+timeout_s = 30
+
+[[targets.ea4500.checks]]
+name = "dmesg"
+command = "dmesg"
+timeout_s = 30
+
+# Lamobo R1: console.example.com:2007, PDU outlet 4, 192.0.2.0/24.
+# TFTP root must expose output/arm/lamobo-r1/images as lamobo-r1/.
+[targets.lamobo-r1]
+outlet = "4"
+ping_host = "192.0.2.1"
+
+[targets.lamobo-r1.console]
+transport = "telnet"
+host = "console.example.com"
+port = 2007
+write_delay_s = 0.05
+
+[targets.lamobo-r1.boot]
+bootloader = "uboot"
+firmware_prompt = '(?m)(?:^|(?<=\r))=>[ \t]*'
+interrupt = "\u0003"
+interrupt_interval_s = 0.1
+firmware_settle_s = 0.5
+firmware_timeout_s = 60
+kernel_start_regex = 'Linux version\s'
+kernel_timeout_s = 120
+
+[[targets.lamobo-r1.boot.boot_steps]]
+command = "setenv serverip {ping_host}"
+expect = '(?m)=> '
+
+[[targets.lamobo-r1.boot.boot_steps]]
+command = "setenv ipaddr {device_ip}"
+expect = '(?m)=> '
+
+[[targets.lamobo-r1.boot.boot_steps]]
+command = "setenv bootargs console=ttyS0,115200 rdinit=/init"
+expect = '(?m)=> '
+
+[[targets.lamobo-r1.boot.boot_steps]]
+command = "tftpboot 0x42000000 {image}"
+expect = 'Bytes transferred = [0-9]+[\s\S]*=> '
+timeout_s = 120
+
+[[targets.lamobo-r1.boot.boot_steps]]
+command = "tftpboot 0x48000000 {dtb}"
+expect = 'Bytes transferred = [0-9]+[\s\S]*=> '
+timeout_s = 60
+
+[[targets.lamobo-r1.boot.boot_steps]]
+command = "bootz 0x42000000 - 0x48000000"
+
+[targets.lamobo-r1.login]
+user = "root"
+shell_timeout_s = 120
+
+[targets.lamobo-r1.profiles.arm]
+image = "lamobo-r1/zImage"
+uname_regex = '(?m)^armv7l\s*$'
+
+[targets.lamobo-r1.profiles.arm.variables]
+dtb = "lamobo-r1/sun7i-a20-lamobo-r1.dtb"
+device_ip = "192.0.2.2"
+device_cidr = "192.0.2.2/24"
+
+[[targets.lamobo-r1.checks]]
+name = "uname"
+command = "uname -a"
+timeout_s = 15
+
+[[targets.lamobo-r1.checks]]
+name = "cmdline"
+command = "cat /proc/cmdline"
+timeout_s = 15
+
+[[targets.lamobo-r1.checks]]
+name = "uptime"
+command = "uptime"
+timeout_s = 15
+
+[[targets.lamobo-r1.checks]]
+name = "memory"
+command = "free"
+timeout_s = 15
+
+[[targets.lamobo-r1.checks]]
+name = "filesystem"
+command = "df -h"
+timeout_s = 15
+
+[[targets.lamobo-r1.checks]]
+name = "kernel_arch"
+command = "uname -m"
+timeout_s = 15
+
+[[targets.lamobo-r1.checks]]
+name = "device_tree"
+command = 'tr -d "\000" < /proc/device-tree/model'
+output_regex = "Lamobo R1"
+timeout_s = 15
+
+[[targets.lamobo-r1.checks]]
+name = "switch_ports"
+command = "for p in lan1 lan2 lan3 lan4 wan; do test -d /sys/class/net/$p || exit 1; done; ethtool -i lan1"
+output_regex = "driver: dsa"
+timeout_s = 15
+
+[[targets.lamobo-r1.checks]]
+name = "network_setup"
+# Probe carrier-up ports for the lab server; several ports may have carrier.
+command = 'ip link set eth0 up || exit 1; for p in lan1 lan2 lan3 lan4 wan; do ip link set "$p" up || exit 1; done; sleep 4; for p in lan1 lan2 lan3 lan4 wan; do [ "$(cat /sys/class/net/$p/carrier)" = 1 ] || continue; echo "Probing $p"; ip addr replace {device_cidr} dev "$p" || exit 1; if ping -I "$p" -c 1 -W 2 {ping_host}; then echo "Selected $p"; ip addr show dev "$p"; exit 0; fi; ip addr del {device_cidr} dev "$p" || exit 1; done; echo "No DSA port reached {ping_host}"; exit 1'
+timeout_s = 45
+
+[[targets.lamobo-r1.checks]]
+name = "ping"
+command = "ping -c 3 -W 2 {ping_host}"
+timeout_s = 30
+
+[[targets.lamobo-r1.checks]]
+name = "dmesg"
+command = "dmesg"
+timeout_s = 30
+
+# RDC R321x eval board, assuming a configured PXELINUX default entry.
+# TFTP: pxelinux.0 -> pxelinux.cfg/default -> bzImage.rdc (embedded initramfs).
+# Run: python3 boot_smoke.py --config lab.toml --target rdc --mode x86 --live-log
+[targets.rdc]
+outlet = "5"
+ping_host = "192.0.2.1"
+
+[targets.rdc.console]
+transport = "telnet"
+host = "console.example.com"
+port = 2005
+write_delay_s = 0.05
+
+[targets.rdc.boot]
+bootloader = "pxe"
+# BIOS/PXE may not print to serial. Wait for Linux without sending keystrokes.
+kernel_start_regex = 'Linux version\s'
+kernel_timeout_s = 180
+
+[targets.rdc.login]
+user = "root"
+password_env = "BOOTSMOKE_LOGIN_PASSWORD"
+shell_timeout_s = 120
+
+[targets.rdc.profiles.x86]
+# Must match your PXELINUX entry; PXE obtains its filename from TFTP.
+image = "bzImage.rdc"
+uname_regex = '(?m)^i[3-6]86\s*$'
+
+[[targets.rdc.checks]]
+name = "uname"
+command = "uname -a"
+timeout_s = 15
+
+[[targets.rdc.checks]]
+name = "kernel_arch"
+command = "uname -m"
+timeout_s = 15
+
+[[targets.rdc.checks]]
+name = "cmdline"
+command = "cat /proc/cmdline"
+timeout_s = 15
+
+[[targets.rdc.checks]]
+name = "uptime"
+command = "uptime"
+timeout_s = 15
+
+[[targets.rdc.checks]]
+name = "memory"
+command = "free"
+timeout_s = 15
+
+[[targets.rdc.checks]]
+name = "filesystem"
+command = "df -h"
+timeout_s = 15
+
+[[targets.rdc.checks]]
+name = "pci"
+# sysfs works even when the trimmed rootfs has no lspci.
+command = 'found=; for d in /sys/bus/pci/devices/*; do test -f "$d/vendor" || continue; printf "%s " "$d"; cat "$d/vendor" "$d/device"; found=1; done; test -n "$found"'
+output_regex = '0x17f3'
+timeout_s = 15
+
+[[targets.rdc.checks]]
+name = "ethernet_driver"
+command = 'found=; for n in /sys/class/net/*; do test -L "$n/device/driver" || continue; driver=$(readlink "$n/device/driver"); case "$driver" in */r6040) echo "$n $driver"; found=1;; esac; done; test -n "$found"'
+output_regex = '/r6040'
+timeout_s = 15
+
+[[targets.rdc.checks]]
+name = "ping"
+# ip=dhcp in the PXELINUX entry configures networking before userspace.
+command = "ping -c 3 -W 2 {ping_host}"
+timeout_s = 30
+
+[[targets.rdc.checks]]
+name = "dmesg"
+command = "dmesg"
+timeout_s = 30

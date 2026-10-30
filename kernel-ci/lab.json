@@ -1,0 +1,20 @@
+{
+  "buildroot": "~/dev/buildroot",
+  "seed": "~/dev/linux",
+  "state": "~/.local/state/kernel-ci",
+  "boot_script": "~/dev/github/misc-scripts/boot_smoke.py",
+  "lab": "~/dev/github/misc-scripts/lab.toml",
+  "upstream": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git",
+  "targets": [
+    {"build": "arm64/rpi4-b", "target": "rpi4", "mode": "aarch64"},
+    {"build": "arm/rpi4-b", "target": "rpi4", "mode": "arm"},
+    {"build": "arm/ns", "target": "smartrg", "mode": "arm"},
+    {"build": "mips64/cobalt", "target": "qube2", "mode": "mips64"},
+    {"build": "mips/cobalt", "target": "qube2", "mode": "mips32"},
+    {"build": "mips/mtx1", "target": "mtx1", "mode": "mips32"},
+    {"build": "mips/ci20"},
+    {"build": "x86/rdc"},
+    {"build": "arm/ea4500", "target": "ea4500", "mode": "arm"},
+    {"build": "arm/lamobo-r1", "target": "lamobo-r1", "mode": "arm"}
+  ]
+}
