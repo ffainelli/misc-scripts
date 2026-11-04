@@ -10,6 +10,7 @@
     {"build": "arm/rpi4-b", "target": "rpi4", "mode": "arm"},
     {"build": "arm/ns", "target": "smartrg", "mode": "arm"},
     {"build": "mips64/cobalt", "target": "qube2", "mode": "mips64"},
+    {"build": "mips64/sibyte", "target": "sibyte", "mode": "mips64"},
     {"build": "mips/cobalt", "target": "qube2", "mode": "mips32"},
     {"build": "mips/mtx1", "target": "mtx1", "mode": "mips32"},
     {"build": "mips/ci20"},

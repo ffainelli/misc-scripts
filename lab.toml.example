@@ -614,3 +614,40 @@ timeout_s = 30
 name = "dmesg"
 command = "dmesg"
 timeout_s = 30
+
+# Broadcom BCM91250E (SiByte), sharing power outlet 5 with the RDC board.
+# Run: python3 boot_smoke.py --config lab.toml --target sibyte --mode mips64 --live-log
+[targets.sibyte]
+outlet = "5" # shared with targets.rdc
+ping_host = "192.0.2.124"
+
+[targets.sibyte.console]
+transport = "telnet"
+host = "console.example.com"
+port = 2008
+write_delay_s = 0.05
+
+[targets.sibyte.boot]
+bootloader = "cfe"
+firmware_prompt = '(?m)(?:^|(?<=\r))CFE>[ \t]*'
+firmware_timeout_s = 60
+kernel_start_regex = 'Linux version\s'
+kernel_timeout_s = 120
+
+[[targets.sibyte.boot.boot_steps]]
+command = "ifconfig eth0 -auto"
+expect = '(?m)(?:^|(?<=\r))CFE>[ \t]*'
+timeout_s = 60
+
+[[targets.sibyte.boot.boot_steps]]
+command = "boot -elf 192.0.2.124:{image}"
+
+[targets.sibyte.login]
+user = "root"
+password_env = "BOOTSMOKE_LOGIN_PASSWORD"
+shell_timeout_s = 120
+
+[targets.sibyte.profiles.mips64]
+# CFE loads the 64-bit kernel repackaged as ELF32.
+image = "sibyte/vmlinux.32"
+uname_regex = '(?m)^mips64(?:el)?\s*$'
