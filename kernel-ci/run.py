@@ -48,6 +48,9 @@ def preflight(cfg):
 
 
 def run(cfg, args):
+    cfg = dict(cfg)
+    for key in ('lab', 'boot_script', 'buildroot', 'seed', 'state'):
+        cfg[key] = str(Path(cfg[key]).expanduser())
     preflight(cfg)
     if args.check:
         return 0
