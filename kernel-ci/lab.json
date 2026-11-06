@@ -13,7 +13,7 @@
     {"build": "mips64/sibyte", "target": "sibyte", "mode": "mips64"},
     {"build": "mips/cobalt", "target": "qube2", "mode": "mips32"},
     {"build": "mips/mtx1", "target": "mtx1", "mode": "mips32"},
-    {"build": "mips/ci20"},
+    {"build": "mips/ci20", "target": "ci20", "mode": "mips32"},
     {"build": "x86/rdc"},
     {"build": "arm/ea4500", "target": "ea4500", "mode": "arm"},
     {"build": "arm/lamobo-r1", "target": "lamobo-r1", "mode": "arm"}
