@@ -2,6 +2,7 @@
 """Boot a hardware target over a network console and run Linux smoke tests.
 
 Requires Python >= 3.11, telnetlib3 >= 2.0 for Telnet transports.
+Console transport "raw" (or the legacy spelling "tcp") uses plain TCP.
 """
 from __future__ import annotations
 
@@ -103,7 +104,7 @@ class Console:
             self.reader, self.writer = await asyncio.wait_for(
                 telnetlib3.open_connection(host, port, encoding=False), timeout=timeout
             )
-        elif transport == "tcp":
+        elif transport in ("raw", "tcp"):
             self.reader, self.writer = await asyncio.wait_for(
                 asyncio.open_connection(host, port), timeout=timeout
             )

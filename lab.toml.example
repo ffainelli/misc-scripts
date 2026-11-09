@@ -27,7 +27,7 @@ outlet = "7"
 ping_host = "192.0.2.1" # TFTP server; verify reachability from Linux
 
 [targets.qube2.console]
-transport = "telnet"   # or "tcp" for a raw TCP serial port
+transport = "telnet"   # use "raw" for plain TCP; "tcp" is also accepted
 host = "console.example.com" # always-on terminal server, not DUT
 port = 2004
 write_delay_s = 0.1 # pace UART input: 100 ms between characters, no flow control

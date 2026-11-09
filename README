@@ -10,6 +10,11 @@ Copy lab.toml.example to lab.toml, then update the sample hostnames, addresses,
 outlets, console ports, TFTP paths, and board settings for your lab. lab.toml is
 ignored by Git. Supply login passwords through BOOTSMOKE_LOGIN_PASSWORD.
 
+Set transport = "raw" in a target's console section when ser2net exposes raw
+TCP. The older spelling "tcp" is equivalent. Use "telnet" (the default) only
+for Telnet endpoints. Raw TCP does not perform Telnet negotiation or interpret
+Telnet control bytes; UART pacing and bootloader handoff reconnects still apply.
+
 Example (power-cycles the configured target):
     python3 boot_smoke.py --config lab.toml --target qube2 --mode mips32
 
