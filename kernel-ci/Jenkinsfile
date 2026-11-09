@@ -16,14 +16,30 @@ pipeline {
     stages {
         stage('Build and boot upstream master') {
             steps {
-                sh "python3 kernel-ci/run.py --output kernel-ci-results/${env.BUILD_NUMBER} ${params.FORCE ? '--force' : ''}"
+                sh """
+                    mkdir -p kernel-ci-results/${env.BUILD_NUMBER}
+                    set +e
+                    python3 -u kernel-ci/run.py --output kernel-ci-results/${env.BUILD_NUMBER} ${params.FORCE ? '--force' : ''} > kernel-ci-results/${env.BUILD_NUMBER}/runner.log 2>&1
+                    status=\$?
+                    cat kernel-ci-results/${env.BUILD_NUMBER}/runner.log
+                    exit \$status
+                """
             }
         }
     }
     post {
         always {
-            junit testResults: "kernel-ci-results/${env.BUILD_NUMBER}/junit.xml", allowEmptyResults: true
+            writeFile file: "kernel-ci-results/${env.BUILD_NUMBER}/build.txt", text: "Build: ${env.BUILD_URL}\nResults: ${env.BUILD_URL}artifact/\nConsole: ${env.BUILD_URL}console\n"
             archiveArtifacts artifacts: "kernel-ci-results/${env.BUILD_NUMBER}/**", allowEmptyArchive: true
+            script {
+                def summaryPath = "kernel-ci-results/${env.BUILD_NUMBER}/summary"
+                def summary = fileExists("${summaryPath}.html") ? readFile("${summaryPath}.html") : 'Run did not produce a platform summary; see runner log for setup/infrastructure errors.'
+                if (fileExists("${summaryPath}.txt")) {
+                    echo readFile("${summaryPath}.txt")
+                }
+                currentBuild.description = "<a href='${env.BUILD_URL}artifact/'>Results/output</a> | <a href='${env.BUILD_URL}console'>Console</a><br>${summary}"
+            }
+            junit testResults: "kernel-ci-results/${env.BUILD_NUMBER}/junit.xml,kernel-ci-results/${env.BUILD_NUMBER}/**/pytest-junit.xml", allowEmptyResults: true
         }
     }
 }
